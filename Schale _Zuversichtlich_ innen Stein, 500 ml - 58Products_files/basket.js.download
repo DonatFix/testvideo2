@@ -1,0 +1,719 @@
+(function($)
+{
+	$.lib = $.lib || {};
+	
+	function basket(pOptions)
+	{
+		var self = this;
+		
+		this.init = function()
+		{
+			this.initBasket();
+		}
+		
+		this.initBasket = function()
+		{
+			this.bindEventHandler();
+		}
+		
+		this.bindEventHandler = function()
+		{
+			/** *************************************************************************** */
+			/* BASKET */
+			/* BASKET ADD */
+			// FROM DETAIL
+			$(".Page").delegate(".add_to_basket:not(.inactive)", "click", function()
+			{
+				self.addToBasket(
+						$(this).closest(".CustomShopBasket.AddTo").attr("data-product-id"),
+						$(this).closest(".CustomShopBasket.AddTo").find("input[name=amount]").val()
+				);
+				return false;
+			});
+			$(".Page").delegate(".add_to_basket_b2b", "click", function()
+			{
+				self.addToBasket(
+						$(this).closest(".CustomShopBasket.AddTo").attr("data-product-id"),
+						$(this).closest(".CustomShopBasket.AddTo").find("input[name=amount]").val(),
+						null,
+						null,
+						false,
+						true
+				);
+				// use default action
+				return false;
+			});
+			$(".Page").delegate(".js_add_to_basket:not(.inactive)", "click", function()
+			{
+				self.addToBasket(
+						$(this).closest(".CustomShopBasket.AddTo").attr("data-product-id"),
+						$(this).closest(".CustomShopBasket.AddTo").find("input[name=amount]").val(),
+						true, this
+				);
+				return false;
+			});
+			
+			// FROM WISHLIST
+			$(".Page").delegate(".actions .addToBasket:not(.inactive)", "click", function()
+			{
+				self.addToBasket(
+						$(this).closest(".BasketEntry").find(".productId").val(),
+						1, false, null, false);
+				return false;
+			});
+			$(".Page").delegate("[data-action=addAllToMyBasket]", "click", function()
+			{
+				var sel = $(this).closest(".CustomShopBasket.WishList").find(".BasketEntry > .actions .productId");
+				/*reverse list and add each product to basket*/
+				$(sel.get().reverse()).each(function(index, value)
+				{
+					var productId = $(this).val();
+					setTimeout(function()
+					{
+						self.addToBasket(
+								productId,
+								1,
+								(index == sel.length - 1),
+								false,
+								true
+						);
+					}, index * 500);
+				});
+				
+				return false;
+			});
+			/* BASKET DELETE */
+			/* WISHLIST DELETE */
+			// FROM BASKET OR WISHLIST
+			$(".Page").delegate(".actions .delete", "click", function()
+			{
+				self.deleteProduct(
+						$(this).closest(".BasketEntry").find(".productId").val(),
+						$(this).closest(".CustomShopBasket.WishListSingle").attr("basketid"));
+				return false;
+			});
+			/** *************************************************************************** */
+			
+			/** *************************************************************************** */
+			/* WISHLIST */
+			/* WISHLIST ADD */
+			// FROM DETAIL OR TEASER
+			$(".Page").delegate("a.add_to_wishlist, input.add_to_wishlist", "click", function()
+			{
+				self.addProductToWishlist(
+						$(this).closest(".CustomShopBasket.AddTo").attr("data-product-id"));
+				return false;
+			});
+			// FROM BASKET
+			$(".Page").delegate(".actions .add_to_wishlist", "click", function()
+			{
+				self.addProductToWishlist(
+						$(this).closest(".BasketEntry").find(".productId").val());
+				return false;
+			});
+			/* WISHLIST DELETE */
+			// siehe oben
+			/** *************************************************************************** */
+			
+			/** *************************************************************************** */
+			/* MARK WISHED PRODUCTS */
+			$(".Page").delegate("", "markWishedProducts", function()
+			{
+				var productIds = Array();
+				$(".CustomProduct.SingleTeaser [data-product-id]").each(function()
+				{
+					productIds.push($(this).attr("data-product-id"));
+				});
+				$(".CustomProduct.Single [data-product-id]").each(function()
+				{
+					productIds.push($(this).attr("data-product-id"));
+				});
+				$.lib.ajax('getWishedProducts',
+					{
+						data:{
+							productIds : productIds,
+							price : {
+								"getPrice" : true
+							}
+						}
+					}, 
+					"custom_shop_basket", 
+					{
+						'_getWishedProductsSuccess': function(response, ajaxOptions)
+						{
+							/* alert(response.data.productIds); */
+							var wishedProducts = response.data.productIds;
+							for (var i = 0; i < wishedProducts.length; i++)
+							{
+								$(".CustomShopBasket.AddTo[data-product-id="+wishedProducts[i]+"]").addClass("wished");
+								$(".CustomShopBasket.AddTo[data-product-id="+wishedProducts[i]+"]").closest(".CustomProduct.SingleTeaser").addClass("wished");
+							}
+							
+							if (response.data.availability != undefined)
+							{
+								$.each(response.data.availability, function(productId, availability)
+								{
+									// Product SingleTeaser
+									var span = $(".availability[data-product-id=" + productId + "]").find("[data-availability-class]");
+									span.removeClass(span.attr("data-availability-class")).addClass("cState" + availability['color']).attr("data-availability-class", "cState" + availability['color']).attr("title", availability['text']).tipTip();
+									
+									// Product Single
+									var availabilityWrapper = $(".availabilityWrapper[data-product-id=" + productId + "]");
+									if(availabilityWrapper[0]) {
+										var _class = availabilityWrapper.find("[data-availability-class]").attr("data-availability-class");
+										availabilityWrapper.find("[data-availability-class]").removeClass(_class).addClass("cState" + availability['color']).attr("data-availability-class", "cState" + availability['color']);
+										availabilityWrapper.find(".availability").text(availability['text']);
+									}
+									var addToDetail = $(".CustomProduct.Single .CustomShopBasket.AddTo.AddToDetail[data-product-id=" + productId + "]");
+									if(addToDetail[0]) {
+										if (availability['buyable'])
+										{
+											addToDetail.find(".defaultButton").removeClass("inactive");
+										}
+										else
+										{
+											addToDetail.find(".defaultButton").addClass("inactive");
+										}
+									}
+								});
+							}
+							if (response.data.price != undefined)
+							{
+								$.each(response.data.price, function(productId, priceHTML)
+								{
+									// Product SingleTeaser
+									var productTeaserSelector = '.CustomProduct.SingleTeaser[data-item-id="###productId###"]';
+									productTeaserSelector = productTeaserSelector.replace('###productId###', productId);
+									var priceElement = $(productTeaserSelector).find('.CustomPrice');
+									priceElement.replaceWith(priceHTML);
+								});
+							}
+							if (response.data.newProductIds != undefined)
+							{
+								for (var i = 0; i < response.data.newProductIds.length; i++)
+								{
+									$(".CustomShopBasket.AddTo[data-product-id=" + response.data.newProductIds[i] + "]").closest(".CustomProduct.SingleTeaser").addClass("newProduct");
+									$("[data-set-part-main-product-id=" + response.data.newProductIds[i] + "]").next(".configurationTitleWrapper").addClass("newProduct");
+								}
+							}
+						},
+						'_getWishedProductsError': function(response, ajaxOptions)
+						{
+						}
+					}
+				);
+			});
+			$(".Page").trigger("markWishedProducts");
+			/** *************************************************************************** */
+			
+			
+			
+			$(".Page").delegate(".actions .deleteAllRed", "click", function()
+			{
+				self.deleteAllRedProducts();
+			});
+			
+			$(".Page").delegate(".actions .deleteAll", "click", function()
+			{
+				self.deleteAllProducts();
+			});
+			
+			
+			$(".Page").delegate(".actions .addAllToBasket", "click", function()
+			{
+				self.addWishListToBasket($(this).closest(".CustomShopBasket.WishListSingle"));
+			});
+			
+			
+			
+			// ******** Wishlist **********
+			$(".Page").delegate(".CustomShopBasket.WishListTeaser", "click", function()
+			{
+				self.loadWishList($(this).attr('basketId'));
+			});
+			
+			$(".Page").delegate(".actions .deleteBasket", "click", function()
+			{
+				var basketId = $(this).closest(".actions").attr('basketId');
+				if (basketId != "")
+				{
+					$(this).closest(".actions").attr('basketId', "");
+					self.deleteBasket(basketId);
+				}
+			});
+			
+			$(".Page").delegate(".actions .addBasket", "click", function()
+			{
+				self.addBasket($(this));
+			});
+
+			// *** title edit
+			$(".Page").delegate(".CustomShopBasket.WishListSingle .title h1, .CustomShopBasket.WishListSingle .editTitle", "click", function()
+			{
+				self.startEditingTitle($('.CustomShopBasket.WishListSingle .title .titleInput'));
+			});
+			
+			$(".Page").delegate(".CustomShopBasket.WishListSingle .title input", "focusout",function()
+			{
+				self.stopEditingTitle($(this).closest(".title"),true);
+			});
+			
+			$(".Page").delegate(".CustomShopBasket.WishListSingle .title input", "keyup",function(event) {
+				
+				switch(event.keyCode)
+				{
+					case 27: // escape
+						self.stopEditingTitle($(this).closest(".title"),false);
+						break;
+					case 13 : // enter
+						self.stopEditingTitle($(this).closest(".title"),true);
+						break;
+				}
+
+			});
+			
+			// *** set standard
+			$(".Page").delegate(".setStandard", "click", function()
+			{
+				self.setStandard($(this).closest(".CustomShopBasket.WishListSingle").attr('basketId'));
+			});
+			
+			// / render Product Teaser
+			$(".Page").delegate("", "renderProductTeaser", function(event, productId)
+			{
+				$.lib.ajax('singleTeaser',
+				{
+					data:
+					{
+						productId: productId
+					}
+				},
+				"custom_shop_product", self);
+			});
+			this._singleTeaserSuccess = function(response, ajaxOptions)
+			{
+				$(".CustomShopBasket.Widget.AddTo[data-product-id="+ajaxOptions.data.productId+"]").closest(".CustomProduct.SingleTeaser").replaceWith(response.data.widget);
+			}
+			this._singleTeaserError = function(response, ajaxOptions)
+			{
+				
+			}
+			
+			$(".Page").delegate("", "renderIsWished", function(event, productId)
+			{
+				$.lib.ajax('isWished',
+				{
+					data:
+					{
+						productId: productId
+					}
+				},
+				"custom_shop_product", self);
+			});
+			this._isWishedSuccess = function(response, ajaxOptions)
+			{
+				var element = $(".CustomShopBasket.AddTo[data-product-id="+ajaxOptions.data.productId+"]").closest(".CustomProduct.SingleTeaser");
+				if (response.data.wished)
+				{
+					element.addClass("wished");
+				}
+				else
+				{
+					element.removeClass("wished");
+				}
+				element = $(".CustomShopBasket.AddTo[data-product-id="+ajaxOptions.data.productId+"]");
+				if (response.data.wished)
+				{
+					element.addClass("wished");
+				}
+				else
+				{
+					element.removeClass("wished");
+				}
+			}
+			this._isWishedError = function(response, ajaxOptions)
+			{
+				
+			}
+		}
+		
+		
+		
+		
+		// ******************** add product to basket *************************//
+		this.addToBasket = function(pProductId, pAmount, oneClick, referrer, pOpenBasket, pToggleProduct)
+		{
+			var assertBasket = false;
+			var url = null;
+			if (oneClick === true)
+			{
+				assertBasket = true;
+				url = $(referrer).attr("href");
+				
+			}
+			if(pOpenBasket == undefined)
+			{
+				pOpenBasket = true;
+			}
+			
+			$.lib.ajax("addToBasket",
+			{
+				data: {
+					productId: pProductId,
+					amount: pAmount,
+					assertBasket:assertBasket,
+					url:url,
+					openBasket : pOpenBasket,
+					toggleProduct : pToggleProduct
+				}
+			}, "custom_shop_basket", self);
+		}
+		this._addToBasketSuccess = function(response, ajaxOptions)
+		{
+			$(".Page").trigger("basket_update", response);
+			if (ajaxOptions && ajaxOptions.data && ajaxOptions.data.assertBasket && ajaxOptions.data.url)
+			{
+				$("body").addClass("wait");
+				window.location.assign(ajaxOptions.data.url);
+			}
+			if (response && response.data && response.data.url)
+			{
+				$("body").addClass("wait");
+				window.location.assign(response.data.url);
+			}
+			else if(ajaxOptions.data.openBasket)
+			{
+				$('html, body').stop(false, true).animate({ scrollTop: 0 }, 'slow', function()
+				{
+					$('.basket[data-spacer-content-loader=overlay][data-short-class-name=custom_shop_basket]').trigger('click');
+				});
+			}
+			
+			var product = response.data.product || {};
+			product['id'] = ajaxOptions.data.productId;
+			$(window).trigger("addProductToBasket",
+				{
+					product: product
+				}
+			);
+		}
+		this._addToBasketError = function(response, ajaxOptions)
+		{
+		}
+		
+		
+		// ************************ delete Product from basket or wishlist
+		// *************************//
+		this.deleteProduct = function(pProductId, pBasketId)
+		{
+			$.lib.ajax("deleteProduct",
+			{
+				data: {
+					productId: pProductId,
+					basketId: pBasketId
+				}
+			}, "custom_shop_basket", self);
+		}
+		this._deleteProductSuccess = function(response, ajaxOptions)
+		{
+			$("#product_" + response.data.productId).remove();
+			
+			if (response.data.isWishList)
+			{
+				self.refreshWishListTeaser(response.data.basketId);
+				$(".Page").trigger("wishlist_update");
+				$(".CustomShopBasket.AddTo[data-product-id="+ajaxOptions.data.productId+"]").trigger("renderIsWished", [ajaxOptions.data.productId]);
+			}
+			else
+			{
+				self.updateSumPrice();
+			}
+		}
+		this._deleteProductError = function(response, ajaxOptions)
+		{
+		}
+		
+		
+		// ************************ add Product to wishlist *************************//
+		this.addProductToWishlist = function(pProductId)
+		{
+			$.lib.ajax('addToWishList',
+			{
+				data: {
+					productId: pProductId
+				}
+			}, "custom_shop_basket", self);
+		}
+		this._addToWishListSuccess = function(response, ajaxOptions)
+		{
+			$(".Page").trigger("wishlist_update");
+			$(".CustomShopBasket.AddTo[data-product-id="+ajaxOptions.data.productId+"]").trigger("renderIsWished", [ajaxOptions.data.productId]);
+		}
+		this._addToWishListError = function(response, ajaxOptions)
+		{
+		}
+		
+		
+		// ************************ updateSumPrice **************************//
+		this.updateSumPrice = function(pElementBasket)
+		{
+			if (pElementBasket != "undefined")
+			{
+				var productId = $(pElementBasket).find("input.productId").val();
+				
+				$.lib.ajax("updateSumPrice",
+				{
+					data: {
+						productId: $(pElementBasket).find("input.productId").val(),
+						amount: $(pElementBasket).find("#amount_" + productId).val()
+					}
+				}, "custom_shop_basket", self);
+			}
+			else
+			{
+				$(".Page").trigger("basket_update");
+				$(".Page").trigger("checkout_expenses_update");
+				$(".Page").trigger("checkout_basket_update");
+				$(".Page").trigger("main_basket_update");
+			}
+		}
+		this._updateSumPriceSuccess = function(response, ajaxOptions)
+		{
+			$(".Page").trigger("basket_update", response);
+			$(".Page").trigger("checkout_expenses_update");
+			$(".Page").trigger("checkout_basket_update");
+			$(".Page").trigger("main_basket_update");
+		}
+		this._updateSumPriceError = function(response, ajaxOptions)
+		{
+		}
+		
+		
+		// ****************** delete all red (non buyable) products *************************//
+		this.deleteAllRedProducts = function()
+		{
+			$.lib.ajax("deleteAllRedProducts",
+			{
+				data: {}
+			}, "custom_shop_basket", self);
+		}
+		this._deleteAllRedProductsSuccess = function(response, ajaxOptions)
+		{
+			for (var i = 0; i < response.data.productIds.length; i++)
+			{
+				$("#product_" + response.data.productIds[i]).remove();
+			}
+			
+			self.updateSumPrice();
+		}
+		this._deleteAllRedProductsError = function(response, ajaxOptions)
+		{
+		}
+		
+		
+		// **************************** delete all products *********************************//
+		this.deleteAllProducts = function()
+		{
+			$.lib.ajax("deleteAllProducts",
+			{
+				data: {
+					
+				}
+			}, "custom_shop_basket", self);
+		}
+		
+		this._deleteAllProductsSuccess = function(response, ajaxOptions)
+		{
+			$(".BasketEntry:not(.legend)").remove();
+			self.updateSumPrice();
+			$('.Page').trigger('basket_emptied');
+		}
+		
+		this._deleteAllProductsError = function(response, ajaxOptions)
+		{
+		}
+		
+		// ******************* add wishlist to basket *************************//
+		this.addWishListToBasket = function(pWishList)
+		{
+			$.lib.ajax("addWishListToBasket",
+				{
+					data: {
+						basketId: $(pWishList).attr('basketId')
+					}
+				}, "custom_shop_basket", self);
+		}
+		this._addWishListToBasketSuccess = function(response, ajaxOptions)
+		{
+			$(".Page").trigger("basket_update");
+		}
+		this._addWishListToBasketError = function(response, ajaxOptions)
+		{
+		}
+		
+		
+		// ************************** load WishList ***************************//
+		this.loadWishList = function(pBasketId)
+		{
+			$.lib.ajax("loadWishList",
+					{
+				data: {
+					basketId: pBasketId
+				}
+					}, "custom_shop_basket", self);
+		}
+		this._loadWishListSuccess = function(response, ajaxOptions)
+		{
+			$('.CustomShopBasket.WishList.Widget:not(.WishListPageContentWrapper)').replaceWith(response.data.widget);
+		}
+		this._loadWishListError = function(response, ajaxOptions)
+		{
+		}
+		
+		
+		// ************************** delete Basket ***************************//
+		this.deleteBasket = function(pBasketId)
+		{
+			$.lib.ajax("deleteBasket",
+			{
+				data: {
+					basketId: pBasketId
+				}
+			}, "custom_shop_basket", self);
+		}
+		this._deleteBasketSuccess = function(response, ajaxOptions)
+		{
+			$('.CustomShopBasket.WishList.Widget:not(.WishListPageContentWrapper)').replaceWith(response.data.widget);
+			$(".Page").trigger("wishlist_update");
+		}
+		this._deleteBasketError = function(response, ajaxOptions)
+		{
+		}
+		
+		
+		// ************************** add Basket ***************************//
+		/**
+		 * pParentElement : the container in which the new Basket should be added
+		 */
+		this.addBasket = function(pParentElement)
+		{
+			$.lib.ajax("addBasket",
+			{
+				data: {
+				}
+			}, "custom_shop_basket", self);
+		}
+		this._addBasketSuccess = function(response, ajaxOptions)
+		{
+			$('.CustomShopBasket.WishList.Widget:not(.WishListPageContentWrapper)').replaceWith(response.data.widget);
+		}
+		this._addBasketError = function(response, ajaxOptions)
+		{ 
+		}
+		
+		
+		// ************************ set standard ******************************//
+		this.setStandard = function(pBasketId)
+		{
+			$.lib.ajax("setStandard",
+			{
+				data: {
+					basketId : pBasketId
+				}
+			}, "custom_shop_basket", self);
+		}
+		this._setStandardSuccess = function(response, ajaxOptions)
+		{
+			$('.CustomShopBasket.WishList').replaceWith(response.data.widget);
+			$(".Page").trigger("wishlist_update");
+		}
+		this._setStandardError = function(response, ajaxOptions)
+		{ 
+		}
+		
+		
+		// ********************** edit basket title *************************//
+		this.startEditingTitle = function(pTitleDiv)
+		{
+			pTitleDiv.css('display','inline-block').focus();
+			pTitleDiv.parent().children('h1').css('display','none');
+		}
+		
+		// if pSaveFlag = true, saves the value, otherwise undo it
+		this.stopEditingTitle = function(pTitleDiv, pSaveFlag)
+		{
+			// !! IE triggers a focusout event when displaying none!
+			// that's why it's important to do it first and check the title values
+			// afterwards, because stopEditing will be called twice.
+			$(pTitleDiv).find('input.titleInput').css('display','none');
+			$(pTitleDiv).find('h1').css('display','inline-block');
+
+			var oldTitle = $(pTitleDiv).find('h1').html();
+			var newTitle = $(pTitleDiv).find('input.titleInput').val();
+
+			if(oldTitle != newTitle)
+			{
+				if(pSaveFlag)
+				{
+					$(pTitleDiv).find('h1').html(newTitle);
+					$.lib.ajax("setTitle",
+						{
+							data: {
+								basketId : $(pTitleDiv).closest('.CustomShopBasket.WishListSingle').attr('basketId'),
+								title : newTitle
+							}
+						}
+					, "custom_shop_basket", self);
+				}
+				else
+				{
+					$(pTitleDiv).find('input.titleInput').val(oldTitle);
+				}
+			}
+		}
+		this._setTitleSuccess = function(response, ajaxOptions)
+		{
+			self.refreshWishListTeaser(response.data.basketId);
+		}
+		this._setTitleError = function(response, ajaxOptions)
+		{
+		}
+		
+		
+		// ********************* update wishListTeaser **********************//
+		this.refreshWishListTeaser = function(pBasketId)
+		{
+			$.lib.ajax("refreshWishListTeaser",
+			{
+				data: {
+					basketId : pBasketId
+				}
+			}
+			, "custom_shop_basket", self);
+		}
+		this._refreshWishListTeaserSuccess = function(response, ajaxOptions)
+		{
+			$('.CustomShopBasket.WishListTeaser[basketId="'+response.data.basketId+'"]').replaceWith(response.data.widget);
+		}
+		this._refreshWishListTeaserError = function(response, ajaxOptions)
+		{ 
+		}
+	};
+	
+	$.fn.basket = function(method, pOptions)
+	{
+		if($.lib.basket == undefined) {
+			$.lib.basket = new basket(pOptions);
+			$.lib.basket.init();
+		}
+		
+		$(".amount input").timeoutInput(
+		{
+			iTimeout: 1000,
+			onChange: function(pParams)
+			{
+				$.lib.basket.updateSumPrice($(pParams.target).closest(".BasketEntry"));
+			}
+		});
+	};
+})(jQuery);

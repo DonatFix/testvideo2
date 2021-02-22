@@ -1,0 +1,78 @@
+(function($)
+{
+	$.lib = $.lib || {};
+	
+	function social(pElement, pOptions)
+	{
+		var self = this;
+		
+		this.init = function()
+		{
+			$(".CustomSocialMedia.social").on("click", "a", function()
+			{
+				var url = "";
+				var location = $(this).attr("data-url");
+				if (location == undefined || location == "")
+				{
+					location = window.location.href;
+				}
+				location = location
+						.replace(/device\.[\w]+\//, "")
+						.replace("/#", "/")
+						.replace("#", "/");
+				if (location[location.length-1] != "/")
+				{
+					location = location + "/";
+				}
+				url = $(this).attr("data-prefix").replace("###url###", 
+						encodeURIComponent(location)
+				);
+				window.open(
+						url,
+						'share-dialog',
+						'width=626,height=436');
+				
+				self.registerClick($(this).attr("data-service"), location);
+				return false;
+			});
+		}
+		
+		this.registerClick = function(serviceName, location)
+		{
+			$.lib.ajax("registerClick",
+			{
+				data: {
+					serviceName: serviceName,
+					location: location
+				},
+			}, "custom_socialMedia", self);
+		}
+		
+		this._registerClickSuccess = function(response, ajaxOptions)
+		{
+		}
+		
+		this._registerClickError = function(response, ajaxOptions)
+		{
+		}
+	};
+	
+	$.fn.social = function(method, pOptions)
+	{
+		return this.each(function()
+		{
+			if (this.social === undefined)
+			{
+				this.social = new social(this, pOptions);
+				this.social.init();
+			}
+			if (typeof method !== 'object')
+			{
+				if (this.social[method])
+				{
+					this.social[method].apply(this.social, pOptions);
+				}
+			}
+		});
+	};
+})(jQuery);

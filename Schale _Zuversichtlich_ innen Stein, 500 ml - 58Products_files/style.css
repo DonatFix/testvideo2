@@ -1,0 +1,134 @@
+@font-face {
+	font-family: '58icons';
+	src:url('fonts/58icons.eot');
+	src:url('fonts/58icons.eot?#iefix') format('embedded-opentype'),
+		url('fonts/58icons.woff') format('woff'),
+		url('fonts/58icons.ttf') format('truetype'),
+		url('fonts/58icons.svg#58icons') format('svg');
+	font-weight: normal;
+	font-style: normal;
+}
+
+/* Use the following CSS code if you want to use data attributes for inserting your icons */
+[data-icon]:before {
+	font-family: '58icons';
+	content: attr(data-icon);
+	speak: none;
+	font-weight: normal;
+	line-height: 1;
+	-webkit-font-smoothing: antialiased;
+}
+
+/* Use the following CSS code if you want to have a class per icon */
+/*
+Instead of a list of all class selectors,
+you can use the generic selector below, but it's slower:
+[class*="icon-"]:before {
+*/
+.icon-right:before, .icon-left:before, .icon-youtube_p:before, .icon-youtube_n:before, .icon-xing_p:before, .icon-xing_n:before, .icon-vimeo_p:before, .icon-vimeo_n:before, .icon-twitter_p:before, .icon-twitter_n:before, .icon-in_p:before, .icon-in_n:before, .icon-google_p:before, .icon-google_n:before, .icon-facebook_p:before, .icon-facebook_n:before, .icon-cannics:before, .icon-products_bildmarke:before, .icon-heimart:before, .icon-tassen_p:before, .icon-tassen_n:before, .icon-textmarke2_p:before, .icon-58products:before, .icon-cellms:before, .icon-markennavi_u_voll:before, .icon-markennavi_u_kontur:before, .icon-markennavi_o_voll:before, .icon-markennavi_o_kontur:before, .icon-dhl:before, .icon-visa:before, .icon-paypal:before, .icon-mastercard:before, .icon-mastercard_n:before {
+	font-family: '58icons';
+	speak: none;
+	font-style: normal;
+	font-weight: normal;
+	line-height: 1;
+	-webkit-font-smoothing: antialiased;
+}
+.icon-right:before {
+	content: "\3e";
+}
+.icon-left:before {
+	content: "\3c";
+}
+.icon-youtube_p:before {
+	content: "\79";
+}
+.icon-youtube_n:before {
+	content: "\59";
+}
+.icon-xing_p:before {
+	content: "\78";
+}
+.icon-xing_n:before {
+	content: "\58";
+}
+.icon-vimeo_p:before {
+	content: "\76";
+}
+.icon-vimeo_n:before {
+	content: "\56";
+}
+.icon-twitter_p:before {
+	content: "\74";
+}
+.icon-twitter_n:before {
+	content: "\54";
+}
+.icon-in_p:before {
+	content: "\69";
+}
+.icon-in_n:before {
+	content: "\49";
+}
+.icon-google_p:before {
+	content: "\67";
+}
+.icon-google_n:before {
+	content: "\47";
+}
+.icon-facebook_p:before {
+	content: "\66";
+}
+.icon-facebook_n:before {
+	content: "\46";
+}
+.icon-cannics:before {
+	content: "\36";
+}
+.icon-products_bildmarke:before {
+	content: "\34";
+}
+.icon-heimart:before {
+	content: "\33";
+}
+.icon-tassen_p:before {
+	content: "\32";
+}
+.icon-tassen_n:before {
+	content: "\31";
+}
+.icon-textmarke2_p:before {
+	content: "\37";
+}
+.icon-58products:before {
+	content: "\35";
+}
+.icon-cellms:before {
+	content: "\24";
+}
+.icon-markennavi_u_voll:before {
+	content: "\77";
+}
+.icon-markennavi_u_kontur:before {
+	content: "\57";
+}
+.icon-markennavi_o_voll:before {
+	content: "\68";
+}
+.icon-markennavi_o_kontur:before {
+	content: "\48";
+}
+.icon-dhl:before {
+	content: "\64";
+}
+.icon-visa:before {
+	content: "\41";
+}
+.icon-paypal:before {
+	content: "\70";
+}
+.icon-mastercard:before {
+	content: "\6d";
+}
+.icon-mastercard_n:before {
+	content: "\4d";
+}

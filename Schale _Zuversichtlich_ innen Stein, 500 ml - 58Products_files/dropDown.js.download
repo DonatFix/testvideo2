@@ -1,0 +1,100 @@
+(function($) {
+	$.lib = $.lib || {};
+	
+	function DropDown(pElement) {
+		var self = this;
+		this.dropDownElement = $(pElement);
+		this.timeoutDropDownId = null;
+		var captionElement = null;
+		var defaultCaption = null;
+		
+		this.dropDownHandler = function(event) {
+			var target = self.dropDownElement;
+			
+			target.focus();
+			
+			if (target.hasClass("open")) {
+				target.removeClass("open");
+				target.children(".itemList").stop(false, true).animate({
+					height : 0
+				}, 100);
+			} else {
+				target.addClass("open");
+				var height = target.find("ul").outerHeight(true);
+				target.children(".itemList").animate({
+					height : height
+				}, 100);
+			}
+		}
+
+		this.dropDownBlurHandler = function(event) {
+			var target = self.dropDownElement;
+			
+			if (target.hasClass("open")) {
+				self.timeoutDropDownId = window.setTimeout(function() {
+					target.removeClass("open");
+					
+					target.children(".itemList").stop(false, true).animate({
+						height : 0
+					}, 100);
+				}, 200);
+			}
+		}
+
+		this.dropDownItemClickHandler = function(event) {
+			var element = $(this);
+			self.dropDownElement.find(".selected").removeClass("selected");
+			element.addClass("selected");
+			if (element.data("caption") && captionElement[0]) {
+				captionElement.html(element.data("caption"));
+				captionElement.parent().addClass("elementSelected");
+			}
+			self.dropDownElement.trigger('change');
+		}
+
+		this.reset = function(event) {
+			self.dropDownElement.find(".selected").removeClass("selected");
+			if (captionElement[0]) {
+				captionElement.html(defaultCaption);
+				captionElement.parent().removeClass("elementSelected");
+			}
+		}
+		this.updateCaption = function(event) {
+			var selected = self.dropDownElement.find(".selected:not(.descendantSelected)");
+			if (selected[0] && selected.data("caption")) {
+				captionElement.html(selected.data("caption"));
+				captionElement.parent().addClass("elementSelected");
+			}
+			else if (selected[0]) {
+				captionElement.html(selected.html());
+				captionElement.parent().addClass("elementSelected");
+			}
+		}
+
+		this.init = function() {
+			// without the tabindex attribute, the element isn't focusable, so
+			// we need it in order for the focusout event to be triggered
+			if (self.dropDownElement.attr('tabindex') == undefined) {
+				self.dropDownElement.attr('tabindex', -1);
+			}
+			captionElement = self.dropDownElement.find(".captionTitle");
+			defaultCaption = captionElement.text();
+			self.updateCaption();
+			
+			self.dropDownElement.on("click", self.dropDownHandler).bind("focusout",
+					self.dropDownBlurHandler);
+			self.dropDownElement.on("click", "li", self.dropDownItemClickHandler);
+			self.dropDownElement.on("reset", self.reset);
+			self.dropDownElement.on("update", self.updateCaption);
+		}
+		this.init();
+	}
+	
+	$.fn.dropDown = function() {
+		return this.each(function() {
+			if (this.dropDown === undefined) {
+				this.dropDown = new DropDown(this);
+			}
+		});
+	};
+})(jQuery);

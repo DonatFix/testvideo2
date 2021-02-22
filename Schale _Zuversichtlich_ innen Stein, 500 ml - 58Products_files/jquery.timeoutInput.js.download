@@ -1,0 +1,199 @@
+(function($) {
+
+	$.lib = $.lib || {};
+	
+	$.fn.timeoutInput = function(pOptions) {
+		$.lib.timeoutInput.apply(this, arguments);
+	};
+	
+	/**
+	 * Klassen Definition
+	 * @param params
+	 */
+	$.lib.timeoutInput = function(params)
+	{
+		$(this).each(function(){
+			if (this.timeoutInput == undefined) {
+				this.timeoutInput = new CTimeInput(this, params);
+			}
+		});
+	}
+	
+	/**
+	 * Constructor of CTimeInput
+	 * 
+	 * @constructor
+	 * @class CTimeInput
+	 * @param Object obj
+	 * @param Object params
+	 * 
+	 */
+	var CTimeInput = function(obj, params)
+	{
+		/**
+		 * Default Optionen
+		 */
+		this.m_oOptions = {
+			/**
+			 * Zu lesendes Object *required!*
+			 * @type Object
+			 */
+			oObj: obj,
+			/**
+			 * Timeout in ms
+			 * @type int
+			 */
+			iTimeout: 200,
+			/**
+			 * Callback Funktion *required!*
+			 * @type function
+			 */
+			onChange: null,
+			/**
+			 * Button zum manuellen Ausf�hren statt automatisierte Ausf�hrung
+			 * @type Object
+			 */
+			oButton: null
+		}
+		
+		/**
+		 * Timeout Zaehler
+		 * @type int
+		 */
+		this.m_iTimer = 0;
+		
+		/**
+		 * Alter Wert vor Aenderung
+		 * @type String
+		 */
+		this.m_strOldValue = $(obj).val();
+		
+		/**
+		 * Neuer Wert nach Aenderung
+		 * @type String
+		 */
+		this.m_strNewValue = null;
+		
+		//Merged die �bergabeparameter in die Options
+		$.extend(this.m_oOptions, params);
+		
+		if(typeof this.m_oOptions.onChange == "function")
+		{		
+			this.init();
+		}
+		
+	}
+	
+	/**
+	 * Init Funktion.
+	 * Setzt den Timeout und binded Events
+	 * @member CTimeInput
+	 */
+	CTimeInput.prototype.init = function()
+	{
+		var me = this;
+		
+		//Wenn ein Button mituebergeben wurde, dann den Button als Exekutive verwenden
+		if(me.m_oOptions.oButton == null)
+		{
+			//Verhindern, dass doppelt gebinded wird
+			$(me.m_oOptions.oObj).unbind(".timeoutInput");
+			
+			/*
+			 * IE Bugfix: IE cannot detect backspace in a Keypress Event
+			 */
+			//Keydown Bin
+			$(me.m_oOptions.oObj).bind("keyup.timeoutInput", function(event){
+				//Bei Enter direkt vergleichen und Callback ausf�hren
+				if(event.which == 8 || event.which == 46)
+					me.resetTimeout();
+			});
+			
+			//Keypress Bind
+			$(me.m_oOptions.oObj).bind("keypress.timeoutInput", function(event){
+				//Bei Enter direkt vergleichen und Callback ausf�hren
+				if(event.which != 13)
+					me.resetTimeout();
+				else
+				{
+					me.forceCompare();
+				}
+			});
+			//Blur Doubleklick Paste Bind
+			$(me.m_oOptions.oObj).bind("blur.timeoutInput dblclick.timeoutInput paste.timeoutInput", function(event){
+				//Direkt vergleichen und Callback ausf�hren
+				if(event.type == "paste")
+				{
+					setTimeout(function(){me.forceCompare();},100);
+				}
+				else
+				{
+					me.forceCompare();
+				}
+			});
+		}
+		else
+		{
+			//Verhindern, dass doppelt gebinded wird
+			$(me.m_oOptions.oButton).unbind(".timeoutInput");
+			
+			if(typeof(me.m_oOptions.oButton) == "object")
+			{
+				$(me.m_oOptions.oButton).bind("click.timeoutInput", function(event){
+					//Direkt vergleichen und Callback ausf�hren
+					me.forceCompare();
+				});
+			}
+		}
+	}
+	
+	/**
+	 * Loescht den Zaehler wenn er nach Eingabe noch nicht abgelaufen ist und setzt ihn neu
+	 * @member CTimeInput
+	 */
+	CTimeInput.prototype.resetTimeout = function()
+	{
+		var me = this;	
+		
+		//Timeout l�schen wenn der Z�hler noch nicht ausgelaufen ist
+		if(me.iTimer != null)
+		{
+			clearTimeout(me.iTimer);
+		}
+		//Neuen Timeout setzen
+		me.iTimer = setTimeout(
+			function(){
+				me.compareValues();
+			}
+		, me.m_oOptions.iTimeout);
+	}
+	
+	CTimeInput.prototype.forceCompare = function()
+	{
+		var me = this;
+		
+		clearTimeout(me.iTimer);
+		me.compareValues();
+	}
+	
+	/**
+	 * Vergleicht den neuen mit dem alten Wert und fuehrt eine Callback Funktion bei Aenderung aus
+	 * @member CTimeInput
+	 */
+	CTimeInput.prototype.compareValues = function()
+	{
+		var me = this;
+		
+		//Neuen Wert setzen
+		me.m_strNewValue = $(me.m_oOptions.oObj).val();
+		
+		//Hat �nderung stattgefunden
+		if (me.m_strOldValue != me.m_strNewValue) 
+		{
+			//Ausf�hrung Callback Funktion
+			me.m_oOptions.onChange({oldValue: me.m_strOldValue, newValue:me.m_strNewValue, target: me.m_oOptions.oObj});
+
+			me.m_strOldValue = me.m_strNewValue;
+		}
+	}
+})(jQuery);	

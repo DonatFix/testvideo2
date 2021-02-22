@@ -1,0 +1,57 @@
+(function($)
+{
+	$.lib = $.lib || {};
+	
+	function SearchInput(searchinput, options)
+	{
+		var self = this;
+		
+		this.getDefaultOptions = function(searchinput){
+			return {
+				searchForm: searchinput,
+				formSelector: 'form[name="formSearch"]',
+				inputSelector: '#inputSearch',
+				searchButton: searchinput.find('.inputSearchIcon'),
+				searchOrigin: location.origin,
+				searchPage: "search",
+				searchParameterKey: "s"
+			};
+		}
+		
+		this.init = function(searchinput, options){
+			self.options = $.extend({}, self.getDefaultOptions(searchinput), options);
+			
+			self.options.searchForm.submit(self.loadSearch);
+			self.options.searchButton.click(self.loadSearch);
+			
+			if(self.options.searchForm.find('.icon.clear').length){
+				self.options.searchForm.find('.icon.clear').on("click", self.clearInput);
+			}
+		}
+		
+		this.clearInput = function(event){
+			self.options.searchForm.find(self.options.inputSelector).val("");
+		}
+		
+		this.loadSearch = function(event){
+			var searchInput = self.options.searchForm.find(self.options.inputSelector);
+			var query = encodeURIComponent(searchInput.val());
+			
+			var url = self.options.searchOrigin + "/" + self.options.searchPage + "/";
+			
+			url += "?" + self.options.searchParameterKey + "=" + query;
+			
+			location = url;
+			return false;
+		}
+		
+		return this.init.apply(this, arguments);
+	};
+	
+	$.fn.searchInput = function(pOptions)
+	{
+		return this.each(function(){
+			this.searchInput = new SearchInput($(this), pOptions);
+		});
+	};
+})(jQuery);

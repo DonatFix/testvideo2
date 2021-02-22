@@ -1,0 +1,40 @@
+(function($) {
+	
+	function ProductSingle(pElement, pOptions) {
+		var self = this;
+		this.productSingle = $(pElement);
+		this.teaserListWrapper = null;
+		this.article = null;
+		this.movableProducts = null;
+		
+		this.checkWidth = function(event) {
+			if (self.productSingle.outerWidth(true) >= 1344) {
+				if (self.article.find(self.movableProducts).length <= 0) {
+					self.movableProducts.appendTo(self.article);
+				}
+			} else {
+				if (self.teaserListWrapper.find(self.movableProducts).length <= 0) {
+					self.movableProducts.prependTo(self.teaserListWrapper);
+				}
+			}
+		}
+
+		this.init = function() {
+			self.article = self.productSingle.children(".SetArticle.Product");
+			self.teaserListWrapper = self.productSingle.children(".teaserListWrapper");
+			self.movableProducts = self.teaserListWrapper.children(".Teaserlist.movable");
+			
+			self.checkWidth();
+			$(window).resize(self.checkWidth);
+		}
+		self.init();
+	}
+	
+	$.fn.productSingle = function(pOptions) {
+		return this.each(function() {
+			if (this.productSingle === undefined) {
+				this.productSingle = new ProductSingle(this, pOptions);
+			}
+		});
+	}
+})(jQuery);

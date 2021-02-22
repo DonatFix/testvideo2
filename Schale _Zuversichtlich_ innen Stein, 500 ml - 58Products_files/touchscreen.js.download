@@ -1,0 +1,40 @@
+(function($) {
+	$.lib = $.lib || {};
+	
+	function Touchscreen() {
+		var self = this;
+		var touchSelectorArray = {}
+
+		this.init = function(pSelector) {
+			$('.Page').delegate(pSelector, "click", function(event) {
+				var element = $(this);
+				
+				if (element.hasClass('hover')) {
+					element.removeClass('hover');
+				} else {
+					$('.hover').removeClass('hover');
+					element.addClass('hover');
+				}
+			});
+		}
+
+		this.addTouchSelector = function(pSelector) {
+			if (touchSelectorArray[pSelector] == undefined) {
+				touchSelectorArray[pSelector] = true;
+				self.init(pSelector);
+			}
+		}
+	}
+	
+	if ($.lib.touchscreen == undefined) {
+		$.lib.touchscreen = new Touchscreen();
+	}
+	
+	$.fn.touch = function() {
+		$.lib.touchscreen.addTouchSelector.call($.lib.touchscreen, this.selector);
+	}
+
+	$.lib.touch = function(pSelector) {
+		$.lib.touchscreen.addTouchSelector.call($.lib.touchscreen, pSelector);
+	}
+})(jQuery);

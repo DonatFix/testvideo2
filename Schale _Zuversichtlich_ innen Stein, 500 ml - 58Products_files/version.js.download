@@ -1,0 +1,1 @@
+/*versionMode="mode_1";referer="";*/var version = "1040", requestedVersion = "1040";function doReload(){if (window.versionHref) {window.location.href = window.versionHref;}location.reload();}function checkReload(){if (version > requestedVersion) {var scroll = $(window).scrollTop();if (scroll === 0){if (requestedVersion != 0) {doReload();} else {}}}}checkReload();

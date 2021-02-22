@@ -1,0 +1,24 @@
+(function($) {
+	$.lib = $.lib || {};
+	
+	function productMobile() {
+		this.init = function() {
+			$('.content').delegate(".CustomProduct.SingleTeaser", "click", function(event) {
+				if ($(this).hasClass('hover')) {
+					return true;
+				}
+				
+				$('.hover').removeClass('hover');
+				$(this).addClass('hover');
+				return false;
+			});
+		}
+	}
+	
+	$.fn.productMobile = function() {
+		if ($.lib.productMobile == undefined) {
+			$.lib.productMobile = new productMobile();
+			$.lib.productMobile.init.apply(this, arguments);
+		}
+	};
+})(jQuery);

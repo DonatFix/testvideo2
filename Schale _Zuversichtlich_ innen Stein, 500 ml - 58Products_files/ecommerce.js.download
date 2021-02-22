@@ -1,0 +1,259 @@
+(function($) {
+	$.lib = $.lib || {};
+	
+	/**
+	 * ecommerce class listen to ecommerce relevant events <br>
+	 * (triggered in .js files or {widgetInitJs} in templates)
+	 * 
+	 * events : - productDetailView - addProductToBasket - checkout
+	 */
+	function eCommerce() {
+		var self = this;
+
+		/**
+		 * Store how many tries were done to check if google analytics was loaded
+		 * @type {number}
+		 */
+		self.gaTries = 0;
+
+		/**
+		 * gets the product according to ga
+		 * 
+		 * @see:https://developers.google.com/analytics/devguides/collection/analyticsjs/enhanced-ecommerce#product-data
+		 * @param pEvent
+		 * @param pObject
+		 */
+		function getProduct(pEvent, pObject) {
+			/*- 
+			id	String	Yes*	The product ID or SKU (e.g. P67890). *Either this field or name must be set.
+			name	String	Yes*	The name of the product (e.g. Android T-Shirt). *Either this field or id must be set.
+			brand	String	No	The brand associated with the product (e.g. Google).
+			category	String	No	The category to which the product belongs (e.g. Apparel). Use / as a delimiter to specify up to 5-levels of hierarchy (e.g. Apparel/Mens/T-Shirts).
+			variant	String	No	The variant of the product (e.g. Black).
+			price	Currency	No	The price of a product (e.g. 29.20).
+			quantity	Number	No	The quantity of a product (e.g. 2).
+			coupon	String	No	The coupon code associated with a product (e.g. SUMMER_SALE13).
+			position	Number	No	The product's position in a list or collection (e.g. 2).			
+			 */
+			var product = {
+				id : "-",
+				name : "-"
+			};
+			var _product = pObject.product || {};
+			if (_product.id || _product.product_id) {
+				product.id = _product.id || _product.product_id;
+				delete product.name;
+			}
+			if (_product.name || _product.title || _product.product_title) {
+				product.name = _product.name || _product.title || _product.product_title;
+			}
+			if (_product.quantity || _product.amount) {
+				product.quantity = _product.quantity || _product.amount;
+			}
+			if (_product.price) {
+				product.price = _product.price;
+			}
+			return product;
+		}
+
+		/**
+		 * Check if google analytics is loaded. If not the event will be triggered again in 1 second.
+		 * That is needed because before the JS for google is loaded it is necessary to check if
+		 * the cookies are accepted and afterward will be loaded the JS. That take some time.
+		 *
+		 * @param pEvent
+		 * @param pObject
+		 * @returns {boolean}
+		 */
+		function isGoogleAnalyticsLoaded(pEvent, pObject) {
+			if (typeof ga !== "function") {
+				self.gaTries++;
+
+				if (self.gaTries < 5) {
+					debug('ga is not defined. Trying event again in 1s. Try: ' + self.gaTries);
+					setTimeout(function(){
+						$(window).trigger(pEvent, pObject);
+					}, 1000);
+				} else {
+					debug('ga is not defined.');
+				}
+
+				return false;
+			}
+
+			return true;
+		}
+		
+		/**
+		 * 
+		 * @param pEvent
+		 * @param pObject
+		 */
+		function checkout(pEvent, pObject) {
+			debug("checkout - object => ");
+			debug(pObject);
+
+			if (!isGoogleAnalyticsLoaded(pEvent, pObject)) {
+				return;
+			}
+
+			var basket = pObject['basket'] || {
+				products : []
+			};
+			// log the order with products
+			// ther may be a basket or an order
+			for ( var key in basket.products) {
+				product = getProduct(pEvent, {
+					product : basket.products[key]
+				});
+				ga('ec:addProduct', product);
+			}
+			var stepName = pObject.stepName || "";
+			if (stepName == "purchase") {
+				ga('ec:setAction', 'purchase', pObject.order);
+			} else {
+				if (pObject.stepId) {
+					ga('ec:setAction', 'checkout', {
+						step : pObject.stepId
+					});
+				} else {
+					ga('ec:setAction', 'checkout');
+				}
+			}
+			ga('send', 'event', 'ec', 'checkout', stepName);
+		}
+		
+		function addProductToBasket(pEvent, pObject) {
+			if (!isGoogleAnalyticsLoaded(pEvent, pObject)) {
+				return;
+			}
+
+			var product = getProduct(pEvent, pObject);
+			
+			ga('ec:addProduct', product);
+			ga('ec:setAction', 'add');
+			ga('send', 'event', 'ec', 'addProductToBasket', '' + product.id + ' - '
+					+ product.name);
+		}
+		
+		function paymentChanged(pEvent, pObject) {
+			if (!isGoogleAnalyticsLoaded(pEvent, pObject)) {
+				return;
+			}
+			
+			var paymentOption = '-';
+			
+			if (pObject) {
+				if (pObject.title) {
+					paymentOption = pObject.title;
+				}
+			}
+			ga('ec:setAction', 'checkout', {
+				'step' : 4,
+				'option' : paymentOption
+			});
+			ga('send', 'event', 'ec', 'paymentChanged', paymentOption);
+		}
+		
+		function addressChanged(pEvent, pObject) {
+			if (!isGoogleAnalyticsLoaded(pEvent, pObject)) {
+				return;
+			}
+			
+			var addressOption = '-';
+			
+			if (pObject) {
+				addressOption = '';
+				if (pObject.type) {
+					addressOption += pObject.type + ' - ';
+				}
+				if (pObject.country_key) {
+					addressOption += 'country:' + pObject.country_key;
+				}
+			}
+			ga('ec:setAction', 'checkout', {
+				'step' : 3,
+				'option' : addressOption
+			});
+			ga('send', 'event', 'ec', 'addressChanged', addressOption);
+		}
+		
+		function checkoutSubmit(pEvent, pObject) {
+			
+			var submitOption = '-';
+			pObject = pObject || {};
+			
+			if (!pObject.stepId) {
+				pObject.stepId = 6;
+			}
+			if (!pObject.stepName) {
+				pObject.stepName = "pay";
+			}
+			
+			checkout(pEvent, pObject);
+		}
+		
+		function productDetailView(pEvent, pObject) {
+			if (!isGoogleAnalyticsLoaded(pEvent, pObject)) {
+				return;
+			}
+
+			var product = getProduct(pEvent, pObject);
+			
+			ga('ec:addProduct', product);
+			ga('ec:setAction', 'detail');
+			ga('send', 'event', 'ec', 'productDetailView', '' + product.id + ' - '
+					+ product.name);
+		}
+		
+		function debug(pMessage) {
+			return;
+			
+			if (typeof (pMessage) === "string") {
+				console.log("ecommerce:" + pMessage);
+			} else {
+				console.log(pMessage);
+			}
+		}
+		
+		this.action = function(pAction, pArguments) {
+			debug("action:" + pAction);
+			if (self.hasOwnProperty(pAction)) {
+				self[pAction](pArguments);
+			}
+		};
+		
+		this.initEvents = function() {
+			$(window).on('checkout', checkout);
+			$(window).on('addProductToBasket', addProductToBasket);
+			$(window).on('productDetailView', productDetailView);
+			$("body").on('paymentChanged', paymentChanged);
+			$("body").on('addressChanged', addressChanged);
+			$("window").on('checkoutSubmit', checkoutSubmit);
+		};
+		
+		this.init = function() {
+			this.initEvents();
+
+			if (typeof ga === "function") {
+				debug("eCommerce init with ga");
+				ga('require', 'ec');
+			} else {
+				debug("eCommerce init without ga");
+				/* This event will be triggered in Site/Widget/Skeleton/Tracking/View/Js/tracking.js */
+				$(window).on('googleAnalyticIsLoaded', function(){
+					debug("eCommerce init with ga");
+					ga('require', 'ec');
+				});
+			}
+		};
+		
+		this.init();
+	}
+	$.lib.ec = new eCommerce();
+	
+	// function action(pAction, pArguments) {
+	// return ec.action(pAction, pArguments);
+	// }
+	
+})(jQuery);
